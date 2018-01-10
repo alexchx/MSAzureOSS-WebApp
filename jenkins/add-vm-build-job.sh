@@ -144,6 +144,11 @@ throw_if_empty --location $location
 throw_if_empty --image_resourcegroup $image_resourcegroup
 throw_if_empty --repository $repository
 
+# open a fixed port for JNLP
+inter_jenkins_config=$(sed -zr -e"s|<slaveAgentPort.*</slaveAgentPort>|{slave-agent-port}|" /var/lib/jenkins/config.xml)
+final_jenkins_config=${inter_jenkins_config//'{slave-agent-port}'/${jenkins_agent_port}}
+echo "${final_jenkins_config}" | sudo tee /var/lib/jenkins/config.xml > /dev/null
+
 # install the required plugins
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "install-plugin credentials -deploy"
 plugins=(envinject)
@@ -153,6 +158,38 @@ done
 
 # wait for instance to be back online
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "version"
+
+#install the service principal
+msi_cred=$(cat <<EOF
+<com.microsoft.azure.util.AzureMsiCredentials>
+  <scope>GLOBAL</scope>
+  <id>azure_service_principal</id>
+  <description>Local MSI</description>
+  <msiPort>50342</msiPort>
+</com.microsoft.azure.util.AzureMsiCredentials>
+EOF
+)
+sp_cred=$(cat <<EOF
+<com.microsoft.azure.util.AzureCredentials>
+  <scope>GLOBAL</scope>
+  <id>azure_service_principal</id>
+  <description>Manual Service Principal</description>
+  <data>
+    <subscriptionId>${subscription_id}</subscriptionId>
+    <clientId>${service_principal_id}</clientId>
+    <clientSecret>${service_principal_secret}</clientSecret>
+    <oauth2TokenEndpoint>https://login.windows.net/${tenant_id}</oauth2TokenEndpoint>
+    <serviceManagementURL>https://management.core.windows.net/</serviceManagementURL>
+    <tenant>${tenant_id}</tenant>
+    <authenticationEndpoint>https://login.microsoftonline.com/</authenticationEndpoint>
+    <resourceManagerEndpoint>https://management.azure.com/</resourceManagerEndpoint>
+    <graphEndpoint>https://graph.windows.net/</graphEndpoint>
+  </data>
+</com.microsoft.azure.util.AzureCredentials>
+EOF
+)
+
+
 
 # download dependencies
 job_xml=$(curl -s ${custom_artifacts_location}/jenkins/vm-build-job.xml${custom_artifacts_location_sas_token})
