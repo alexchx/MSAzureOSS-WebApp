@@ -155,6 +155,30 @@ sudo service jenkins restart
 # wait for instance to be back online
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "version"
 
+# download credential dependencies
+credentials_sp_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-sp.xml${custom_artifacts_location_sas_token})
+credentials_storage_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-storage.xml${custom_artifacts_location_sas_token})
+
+# prepare credentials_sp.xml (service principal)
+credentials_sp_xml=${credentials_sp_xml//'{insert-credentials-id}'/${credential_sp_id}}
+credentials_sp_xml=${credentials_sp_xml//'{insert-credentials-description}'/${credential_sp_description}}
+credentials_sp_xml=${credentials_sp_xml//'{insert-subscription-id}'/${subscription}}
+credentials_sp_xml=${credentials_sp_xml//'{insert-client-id}'/${clientid}}
+credentials_sp_xml=${credentials_sp_xml//'{insert-client-secret}'/${clientsecret}}
+credentials_sp_xml=${credentials_sp_xml//'{insert-tenant-id}'/${tenant}}
+
+# prepare credentials_storage.xml (storage account)
+credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-id}'/${credential_storage_id}}
+credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-description}'/${credential_storage_description}}
+credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-account-name}'/${storage_account_name}}
+credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-account-key}'/${storage_account_key}}
+
+# add credentials
+echo "${credentials_sp_xml}" > credentials_sp.xml
+echo "${credentials_storage_xml}" > credentials_storage.xml
+run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_sp.xml"
+run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_storage.xml"
+
 # configure Azure Container Instance
 aci_agent_conf=$(cat <<EOF
 <clouds>
@@ -197,10 +221,8 @@ echo "${final_jenkins_config}" | sudo tee /var/lib/jenkins/config.xml > /dev/nul
 # reload configuration
 run_util_script "jenkins/run-cli-command.sh" -c "reload-configuration"
 
-# download dependencies
+# download job dependencies
 job_xml=$(curl -s ${custom_artifacts_location}/jenkins/jobs-build-webapp.xml${custom_artifacts_location_sas_token})
-credentials_sp_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-sp.xml${custom_artifacts_location_sas_token})
-credentials_storage_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-storage.xml${custom_artifacts_location_sas_token})
 
 # prepare job.xml
 job_xml=${job_xml//'{insert-repository-url}'/${repository}}
@@ -210,29 +232,9 @@ job_xml=${job_xml//'{insert-credentials-sp-id}'/${credential_sp_id}}
 job_xml=${job_xml//'{insert-resourcegroup-name}'/${resourcegroup}}
 job_xml=${job_xml//'{insert-webapp-name}'/${webapp}}
 
-# prepare credentials_sp.xml (service principal)
-credentials_sp_xml=${credentials_sp_xml//'{insert-credentials-id}'/${credential_sp_id}}
-credentials_sp_xml=${credentials_sp_xml//'{insert-credentials-description}'/${credential_sp_description}}
-credentials_sp_xml=${credentials_sp_xml//'{insert-subscription-id}'/${subscription}}
-credentials_sp_xml=${credentials_sp_xml//'{insert-client-id}'/${clientid}}
-credentials_sp_xml=${credentials_sp_xml//'{insert-client-secret}'/${clientsecret}}
-credentials_sp_xml=${credentials_sp_xml//'{insert-tenant-id}'/${tenant}}
-
-# prepare credentials_storage.xml (storage account)
-credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-id}'/${credential_storage_id}}
-credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-description}'/${credential_storage_description}}
-credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-account-name}'/${storage_account_name}}
-credentials_storage_xml=${credentials_storage_xml//'{insert-credentials-account-key}'/${storage_account_key}}
-
 # add job
 echo "${job_xml}" > job.xml
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-job ${job_short_name}" -cif "job.xml"
-
-# add credentials
-echo "${credentials_sp_xml}" > credentials_sp.xml
-echo "${credentials_storage_xml}" > credentials_storage.xml
-run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_sp.xml"
-run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_storage.xml"
 
 # cleanup
 rm job.xml
