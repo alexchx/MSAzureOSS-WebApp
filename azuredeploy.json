@@ -5,13 +5,17 @@
     "adminUsername": {
       "type": "string",
       "defaultValue": "jenkinsadmin",
+      "minLength": 1,
+      "maxLength": 16,
       "metadata": {
         "description": "User name for the Jenkins Virtual Machine."
       }
     },
     "adminPassword": {
       "type": "securestring",
-      "defaultValue": "",
+      "defaultValue": "Beat@Apple123",
+      "minLength": 6,
+      "maxLength": 16,
       "metadata": {
         "description": "Password for the Jenkins Virtual Machine."
       }
@@ -19,6 +23,8 @@
     "jenkinsDnsPrefix": {
       "type": "string",
       "defaultValue": "jenkins-oss-00",
+      "minLength": 3,
+      "maxLength": 16,
       "metadata": {
         "description": "Unique DNS Name for the Public IP used to access the Jenkins Virtual Machine."
       }
@@ -38,6 +44,7 @@
     "repositoryUrl": {
       "type": "string",
       "defaultValue": "https://github.com/alexchx/MSAzureOSS-VMSS",
+      "minLength": 1,
       "metadata": {
         "description": "GitHub repository URL, e.g. https://github.com/xxx/yyy."
       }
@@ -45,6 +52,7 @@
     "clientId": {
       "type": "string",
       "defaultValue": "55e66ab1-e79a-449d-a171-ab94214b3c07",
+      "minLength": 1,
       "metadata": {
         "description": "Client id for Azure service principal."
       }
@@ -52,6 +60,7 @@
     "clientSecret": {
       "type": "string",
       "defaultValue": "60a4f891-cb93-4593-8a07-cf1d2693b70d",
+      "minLength": 1,
       "metadata": {
         "description": "Client secret for Azure service principal."
       }
@@ -59,6 +68,8 @@
     "VMResourceGroup": {
       "type": "string",
       "defaultValue": "MSAzureOSSVMSS00",
+      "minLength": 1,
+      "maxLength": 16,
       "metadata": {
         "description": "Resource group for the new Tomcat Virtual Machine components."
       }
@@ -66,21 +77,52 @@
     "VMAdminUsername": {
       "type": "string",
       "defaultValue": "azureuser",
+      "minLength": 3,
+      "maxLength": 16,
       "metadata": {
-        "description": "Username for the new Tomcat Virtual Machine."
+        "description": "User name for the new Tomcat Virtual Machine."
       }
     },
     "VMAdminPassword": {
       "type": "securestring",
-      "defaultValue": "",
+      "defaultValue": "Beat@Apple123",
+      "minLength": 6,
+      "maxLength": 16,
       "metadata": {
         "description": "Password for the new Tomcat Virtual Machine."
+      }
+    },
+    "webDnsPrefix": {
+      "type": "string",
+      "defaultValue": "weboss00",
+      "minLength": 3,
+      "maxLength": 16,
+      "metadata": {
+        "description": "Prefix name for web app components, accepts numbers and lower-case letters only."
+      }
+    },
+    "webMySqlAdminLogin": {
+      "type": "string",
+      "defaultValue": "adminLogin",
+      "minLength": 3,
+      "maxLength": 16,
+      "metadata": {
+        "description": "User name for MySQL admin login."
+      }
+    },
+    "webMySqlAdminPassword": {
+      "type": "securestring",
+      "defaultValue": "Beat@Apple123",
+      "minLength": 6,
+      "maxLength": 16,
+      "metadata": {
+        "description": "Password for MySQL admin login."
       }
     }
   },
   "variables": {
-    "resourcePrefix": "jenkins",
-    "storageAccountName": "[concat(variables('resourcePrefix'), uniquestring(resourceGroup().id))]",
+    "resourcePrefix": "Jenkins",
+    "storageAccountName": "[concat(toLower(variables('resourcePrefix')), uniquestring(resourceGroup().id))]",
     "OSDiskName": "[concat(variables('resourcePrefix'), 'OSDisk')]",
     "nicName": "[concat(variables('resourcePrefix'), 'VMNic')]",
     "subnetName": "[concat(variables('resourcePrefix'), 'Subnet')]",
@@ -98,9 +140,13 @@
     "_extensionScript": "install_jenkins.sh",
     "_artifactsLocationSasToken": "",
     "_customArtifactsLocation": "[concat(replace(parameters('repositoryUrl'), 'https://github.com/', 'https://raw.githubusercontent.com/'), '/master/')]",
-    "_customExtensionScript": "add-vm-build-job.sh",
+    "_customExtensionScript": "shell-add-jobs-build-webapp.sh",
     "_customArtifactsLocationSasToken": "",
-    "_customCommandToExecute": "[concat('./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -rg \"', parameters('VMResourceGroup'), '\" -l \"', resourceGroup().location, '\" -irg \"', resourceGroup().name, '\" -im \"', variables('vmImageName'), '\" -u \"', parameters('VMAdminUsername'), '\" -p \"', parameters('VMAdminPassword'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
+    "webStorageAccountName": "[concat(toLower(parameters('webDnsPrefix')), 'storage')]",
+    "webServicePlanName": "[concat(parameters('webDnsPrefix'), 'ServicePlan')]",
+    "webAppName": "[concat(parameters('webDnsPrefix'), 'Web')]",
+    "webMySqlServerName": "[concat(parameters('webDnsPrefix'), 'mysqlserver')]",
+    "webMySqlDbName": "[concat(parameters('webDnsPrefix'), 'mysqldb')]"
   },
   "resources": [
     {
@@ -270,7 +316,8 @@
           "apiVersion": "2015-06-15",
           "location": "[resourceGroup().location]",
           "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]"
+            "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('webStorageAccountName'))]"
           ],
           "properties": {
             "publisher": "Microsoft.Azure.Extensions",
@@ -284,10 +331,125 @@
               ]
             },
             "protectedSettings": {
-              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"', variables('vmPrivateIP'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ', variables('_customCommandToExecute'))]"
+              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', variables('webStorageAccountName'), '\" -sk \"', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('webStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -rg \"', parameters('VMResourceGroup'), '\" -l \"', resourceGroup().location, '\" -irg \"', resourceGroup().name, '\" -im \"', variables('vmImageName'), '\" -u \"', parameters('VMAdminUsername'), '\" -p \"', parameters('VMAdminPassword'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
             }
           }
         }
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Standard_RAGRS"
+      },
+      "kind": "Storage",
+      "name": "[variables('webStorageAccountName')]",
+      "apiVersion": "2017-06-01",
+      "location": "[resourceGroup().location]",
+      "tags": {},
+      "properties": {},
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "sku": {
+        "name": "B1"
+      },
+      "kind": "app",
+      "name": "[variables('webServicePlanName')]",
+      "apiVersion": "2016-09-01",
+      "location": "[resourceGroup().location]",
+      "properties": {
+          "name": "[variables('webServicePlanName')]"
+      },
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "kind": "app",
+      "name": "[variables('webAppName')]",
+      "apiVersion": "2016-08-01",
+      "location": "[resourceGroup().location]",
+      "tags": {},
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webServicePlanName'))]"
+      },
+      "dependsOn": [
+          "[resourceId('Microsoft.Web/serverfarms', variables('webServicePlanName'))]"
+      ],
+      "resources": [
+        {
+          "type": "config",
+          "name": "appsettings",
+          "apiVersion": "2016-08-01",
+          "location": "East US",
+          "tags": {},
+          "properties": {
+              "javaVersion": "1.8",
+              "javaContainer": "TOMCAT",
+              "javaContainerVersion": "9.0"
+          },
+          "dependsOn": [
+              "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+          ]
+        },
+        {  
+          "apiVersion":"2016-08-01",
+          "name":"connectionstrings",
+          "type":"config",
+          "dependsOn":[
+              "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
+          ],
+          "properties": {
+             "defaultConnection": {
+                "value":"[concat('Database=', variables('webMySqlDbName'), ';Data Source=', variables('webMySqlServerName'), '.mysql.database.azure.com;User Id=', parameters('webMySqlAdminLogin'),'@', variables('webMySqlServerName'),';Password=', parameters('webMySqlAdminPassword'))]",
+                "type":"MySql"
+             }
+          }
+        }
+      ]
+    },
+    {  
+      "apiVersion":"2017-04-30-preview",
+      "location":"[resourceGroup().location]",
+      "name":"[variables('webMySqlServerName')]",
+      "properties":{
+         "version":"5.7",
+         "administratorLogin":"[parameters('webMySqlAdminLogin')]",
+         "administratorLoginPassword":"[parameters('webMySqlAdminPassword')]"
+      },
+      "sku":{  
+         "name":"MYSQLB50",
+         "tier":"Basic",
+         "capacity":50
+      },
+      "type":"Microsoft.DBforMySQL/servers",
+      "resources":[  
+         {  
+            "type":"firewallrules",
+            "apiVersion":"2017-04-30-preview",
+            "dependsOn":[  
+               "[resourceId('Microsoft.DBforMySQL/servers', variables('webMySqlServerName'))]"
+            ],
+            "location":"[resourceGroup().location]",
+            "name":"[concat(variables('webMySqlServerName'),'Firewall')]",
+            "properties":{  
+               "startIpAddress":"0.0.0.0",
+               "endIpAddress":"255.255.255.255"
+            }
+         },
+         {  
+            "name":"[variables('webMySqlDbName')]",
+            "type":"databases",
+            "apiVersion":"2017-04-30-preview",
+            "properties":{  
+               "charset":"utf8",
+               "collation":"utf8_general_ci"
+            },
+            "dependsOn":[  
+               "[resourceId('Microsoft.DBforMySQL/servers', variables('webMySqlServerName'))]"
+            ]
+         }
       ]
     }
   ],
