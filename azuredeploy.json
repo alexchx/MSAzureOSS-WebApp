@@ -65,33 +65,6 @@
         "description": "Client secret for Azure service principal."
       }
     },
-    "VMResourceGroup": {
-      "type": "string",
-      "defaultValue": "MSAzureOSSVMSS00",
-      "minLength": 1,
-      "maxLength": 16,
-      "metadata": {
-        "description": "Resource group for the new Tomcat Virtual Machine components."
-      }
-    },
-    "VMAdminUsername": {
-      "type": "string",
-      "defaultValue": "azureuser",
-      "minLength": 3,
-      "maxLength": 16,
-      "metadata": {
-        "description": "User name for the new Tomcat Virtual Machine."
-      }
-    },
-    "VMAdminPassword": {
-      "type": "securestring",
-      "defaultValue": "Beat@Apple123",
-      "minLength": 6,
-      "maxLength": 16,
-      "metadata": {
-        "description": "Password for the new Tomcat Virtual Machine."
-      }
-    },
     "webDnsPrefix": {
       "type": "string",
       "defaultValue": "weboss00",
@@ -135,7 +108,6 @@
     "vNetAddressPrefixes": "10.0.0.0/16",
     "sNetAddressPrefixes": "10.0.0.0/24",
     "vmPrivateIP": "10.0.0.5",
-    "vmImageName": "myPackerLinuxImage",
     "_artifactsLocation": "https://raw.githubusercontent.com/Azure/azure-devops-utils/v0.28.1/",
     "_extensionScript": "install_jenkins.sh",
     "_artifactsLocationSasToken": "",
@@ -331,7 +303,7 @@
               ]
             },
             "protectedSettings": {
-              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', variables('webStorageAccountName'), '\" -sk \"', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('webStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -rg \"', parameters('VMResourceGroup'), '\" -l \"', resourceGroup().location, '\" -irg \"', resourceGroup().name, '\" -im \"', variables('vmImageName'), '\" -u \"', parameters('VMAdminUsername'), '\" -p \"', parameters('VMAdminPassword'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
+              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', variables('webStorageAccountName'), '\" -sk \"', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('webStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -rg \"', resourceGroup().name, '\" -w \"', variables('webAppName'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
             }
           }
         }
@@ -461,6 +433,10 @@
     "SSH": {
       "type": "string",
       "value": "[concat('ssh -L 8080:localhost:8080 ', parameters('adminUsername'), '@', reference(variables('publicIPAddressName')).dnsSettings.fqdn)]"
+    },
+    "webAppURL": {
+      "type": "string",
+      "value": "[concat('http://', reference(variables('webAppName')).defaultHostName)]"
     }
   }
 }

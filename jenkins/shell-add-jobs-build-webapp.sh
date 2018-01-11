@@ -14,7 +14,6 @@ Arguments
   --resourcegroup|-rg              [Required]: Azure resource group for the components
   --webapp|-w                      [Required]: Azure web app name
   --repository|-rr                 [Required]: Repository targeted by the build
-  --agent_port|-p                            : Jenkins agent port
   --artifacts_location|-al                   : Url used to reference other scripts/artifacts.
   --sas_token|-st                            : A sas token needed if the artifacts location is private.
   --custom_artifacts_location|-cal [Required]: Url used to reference custom scripts/artifacts.
@@ -47,6 +46,7 @@ function run_util_script() {
 jenkins_url="http://localhost:8080/"
 jenkins_username="admin"
 jenkins_password=""
+jenkins_agent_port=5378
 job_short_name="BuildWebApp"
 credential_sp_id='mySP'
 credential_sp_description='Azure Service Principal'
@@ -55,7 +55,6 @@ credential_storage_description='Microsoft Azure Storage	'
 aci_container_name='ACI-container'
 aci_container_image='cloudbees/jnlp-slave-with-java-build-tools'
 artifacts_location="https://raw.githubusercontent.com/Azure/azure-devops-utils/master/"
-agent_port=5378
 
 while [[ $# > 0 ]]
 do
@@ -96,10 +95,6 @@ do
       ;;
     --repository|-rr)
       repository="$1"
-      shift
-      ;;
-    --agent_port|-p)
-      agent_port="$1"
       shift
       ;;
     --artifacts_location|-al)
