@@ -43,7 +43,7 @@
     },
     "repositoryUrl": {
       "type": "string",
-      "defaultValue": "https://github.com/alexchx/MSAzureOSS-VMSS",
+      "defaultValue": "https://github.com/alexchx/MSAzureOSS-WebApp",
       "minLength": 1,
       "metadata": {
         "description": "GitHub repository URL, e.g. https://github.com/xxx/yyy."
@@ -65,16 +65,16 @@
         "description": "Client secret for Azure service principal."
       }
     },
-    "webDnsPrefix": {
+    "appDnsPrefix": {
       "type": "string",
-      "defaultValue": "weboss00",
+      "defaultValue": "WebOSSWA00",
       "minLength": 3,
       "maxLength": 16,
       "metadata": {
-        "description": "Prefix name for web app components, accepts numbers and lower-case letters only."
+        "description": "Prefix name for web app components, accepts numbers and letters only."
       }
     },
-    "webMySqlAdminLogin": {
+    "mySqlAdminLogin": {
       "type": "string",
       "defaultValue": "adminLogin",
       "minLength": 3,
@@ -83,7 +83,7 @@
         "description": "User name for MySQL admin login."
       }
     },
-    "webMySqlAdminPassword": {
+    "mySqlAdminPassword": {
       "type": "securestring",
       "defaultValue": "Beat@Apple123",
       "minLength": 6,
@@ -108,17 +108,18 @@
     "vNetAddressPrefixes": "10.0.0.0/16",
     "sNetAddressPrefixes": "10.0.0.0/24",
     "vmPrivateIP": "10.0.0.5",
+    "agentPort": "5378",
     "_artifactsLocation": "https://raw.githubusercontent.com/Azure/azure-devops-utils/v0.28.1/",
     "_extensionScript": "install_jenkins.sh",
     "_artifactsLocationSasToken": "",
     "_customArtifactsLocation": "[concat(replace(parameters('repositoryUrl'), 'https://github.com/', 'https://raw.githubusercontent.com/'), '/master/')]",
     "_customExtensionScript": "shell-add-jobs-build-webapp.sh",
     "_customArtifactsLocationSasToken": "",
-    "webStorageAccountName": "[concat(toLower(parameters('webDnsPrefix')), 'storage')]",
-    "webServicePlanName": "[concat(parameters('webDnsPrefix'), 'ServicePlan')]",
-    "webAppName": "[concat(parameters('webDnsPrefix'), 'Web')]",
-    "webMySqlServerName": "[concat(parameters('webDnsPrefix'), 'mysqlserver')]",
-    "webMySqlDbName": "[concat(parameters('webDnsPrefix'), 'mysqldb')]"
+    "webStorageAccountName": "[concat(toLower(parameters('appDnsPrefix')), 'storage')]",
+    "webServicePlanName": "[concat(parameters('appDnsPrefix'), 'ServicePlan')]",
+    "webAppName": "[concat(parameters('appDnsPrefix'), 'Web')]",
+    "webMySqlServerName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqlserver')]",
+    "webMySqlDbName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqldb')]"
   },
   "resources": [
     {
@@ -181,6 +182,21 @@
               "priority": 101,
               "direction": "Inbound"
             }
+          },
+          {
+              "name": "AllowAgentInBound",
+              "properties": {
+                  "protocol": "*",
+                  "sourcePortRange": "*",
+                  "destinationPortRange": "[variables('agentPort')]",
+                  "sourceAddressPrefix": "*",
+                  "destinationAddressPrefix": "*",
+                  "access": "Allow",
+                  "priority": 200,
+                  "direction": "Inbound",
+                  "sourceAddressPrefixes": [],
+                  "destinationAddressPrefixes": []
+              }
           }
         ]
       }
@@ -352,7 +368,7 @@
       "resources": [
         {
           "type": "config",
-          "name": "appsettings",
+          "name": "web",
           "apiVersion": "2016-08-01",
           "location": "East US",
           "tags": {},
@@ -374,7 +390,7 @@
           ],
           "properties": {
              "defaultConnection": {
-                "value":"[concat('Database=', variables('webMySqlDbName'), ';Data Source=', variables('webMySqlServerName'), '.mysql.database.azure.com;User Id=', parameters('webMySqlAdminLogin'),'@', variables('webMySqlServerName'),';Password=', parameters('webMySqlAdminPassword'))]",
+                "value":"[concat('Database=', variables('webMySqlDbName'), ';Data Source=', variables('webMySqlServerName'), '.mysql.database.azure.com;User Id=', parameters('mySqlAdminLogin'),'@', variables('webMySqlServerName'),';Password=', parameters('mySqlAdminPassword'))]",
                 "type":"MySql"
              }
           }
@@ -387,8 +403,8 @@
       "name":"[variables('webMySqlServerName')]",
       "properties":{
          "version":"5.7",
-         "administratorLogin":"[parameters('webMySqlAdminLogin')]",
-         "administratorLoginPassword":"[parameters('webMySqlAdminPassword')]"
+         "administratorLogin":"[parameters('mySqlAdminLogin')]",
+         "administratorLoginPassword":"[parameters('mySqlAdminPassword')]"
       },
       "sku":{  
          "name":"MYSQLB50",
