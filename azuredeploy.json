@@ -118,6 +118,7 @@
     "appStorageAccountName": "[concat(toLower(parameters('appDnsPrefix')), 'storage')]",
     "servicePlanName": "[concat(parameters('appDnsPrefix'), 'ServicePlan')]",
     "webAppName": "[concat(parameters('appDnsPrefix'), 'Web')]",
+    "appInsightsName": "[concat(parameters('appDnsPrefix'), 'AppInsights')]",
     "mySqlServerName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqlserver')]",
     "mySqlDbName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqldb')]"
   },
@@ -396,6 +397,21 @@
           }
         }
       ]
+    },
+    {
+      "type": "microsoft.insights/components",
+      "kind": "java",
+      "name": "[variables('appInsightsName')]",
+      "apiVersion": "2014-04-01",
+      "location": "eastus",
+      "tags": {
+          "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('webAppName'))]": "Resource"
+      },
+      "scale": null,
+      "properties": {
+          "ApplicationId": "[variables('appInsightsName')]"
+      },
+      "dependsOn": []
     },
     {  
       "apiVersion":"2017-04-30-preview",
