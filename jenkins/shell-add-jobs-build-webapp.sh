@@ -158,6 +158,7 @@ run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_use
 # download credential dependencies
 credentials_sp_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-sp.xml${custom_artifacts_location_sas_token})
 credentials_storage_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-storage.xml${custom_artifacts_location_sas_token})
+configs_agent_aci_xml=$(curl -s ${custom_artifacts_location}/jenkins/configs-agent-aci.xml${custom_artifacts_location_sas_token})
 
 # prepare credentials_sp.xml (service principal)
 credentials_sp_xml=${credentials_sp_xml//'{insert-credentials-id}'/${credential_sp_id}}
@@ -180,42 +181,13 @@ run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_use
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_storage.xml"
 
 # configure Azure Container Instance
-aci_agent_conf=$(cat <<EOF
-<clouds>
-    <com.microsoft.jenkins.containeragents.aci.AciCloud plugin="azure-container-agents@0.4.1">
-      <name>Aci</name>
-      <credentialsId>${credential_sp_id}</credentialsId>
-      <resourceGroup>${resourcegroup}</resourceGroup>
-      <templates>
-        <com.microsoft.jenkins.containeragents.aci.AciContainerTemplate>
-          <name>${aci_container_name}</name>
-          <label>${aci_container_name}</label>
-          <image>${aci_container_image}</image>
-          <osType>Linux</osType>
-          <command>jenkins-slave -url ${rootUrl} ${secret} ${nodeName}</command>
-          <rootFs>/home/jenkins</rootFs>
-          <timeout>10</timeout>
-          <ports/>
-          <cpu>1</cpu>
-          <memory>1.5</memory>
-          <retentionStrategy class="com.microsoft.jenkins.containeragents.strategy.ContainerIdleRetentionStrategy">
-            <idleMinutes>10</idleMinutes>
-            <idleMinutes defined-in="com.microsoft.jenkins.containeragents.strategy.ContainerIdleRetentionStrategy">10</idleMinutes>
-          </retentionStrategy>
-          <envVars/>
-          <privateRegistryCredentials/>
-          <volumes/>
-          <launchMethodType>jnlp</launchMethodType>
-          <isAvailable>true</isAvailable>
-        </com.microsoft.jenkins.containeragents.aci.AciContainerTemplate>
-      </templates>
-    </com.microsoft.jenkins.containeragents.aci.AciCloud>
-  </clouds>
-EOF
-)
+configs_agent_aci_xml=${configs_agent_aci_xml//'{insert-credentials-id}'/${credential_sp_id}}
+configs_agent_aci_xml=${configs_agent_aci_xml//'{insert-resourcegroup-name}'/${resourcegroup}}
+configs_agent_aci_xml=${configs_agent_aci_xml//'{insert-aci-container-name}'/${aci_container_name}}
+configs_agent_aci_xml=${configs_agent_aci_xml//'{insert-aci-container-image}'/${aci_container_image}}
 
 inter_jenkins_config=$(sed -zr -e"s|<clouds/>|{clouds}|" /var/lib/jenkins/config.xml)
-final_jenkins_config=${inter_jenkins_config//'{clouds}'/${aci_agent_conf}}
+final_jenkins_config=${inter_jenkins_config//'{clouds}'/${configs_agent_aci_xml}}
 echo "${final_jenkins_config}" | sudo tee /var/lib/jenkins/config.xml > /dev/null
 
 # reload configuration
