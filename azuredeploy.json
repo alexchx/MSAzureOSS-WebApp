@@ -115,11 +115,11 @@
     "_customArtifactsLocation": "[concat(replace(parameters('repositoryUrl'), 'https://github.com/', 'https://raw.githubusercontent.com/'), '/master/')]",
     "_customExtensionScript": "shell-add-jobs-build-webapp.sh",
     "_customArtifactsLocationSasToken": "",
-    "webStorageAccountName": "[concat(toLower(parameters('appDnsPrefix')), 'storage')]",
-    "webServicePlanName": "[concat(parameters('appDnsPrefix'), 'ServicePlan')]",
+    "appStorageAccountName": "[concat(toLower(parameters('appDnsPrefix')), 'storage')]",
+    "servicePlanName": "[concat(parameters('appDnsPrefix'), 'ServicePlan')]",
     "webAppName": "[concat(parameters('appDnsPrefix'), 'Web')]",
-    "webMySqlServerName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqlserver')]",
-    "webMySqlDbName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqldb')]"
+    "mySqlServerName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqlserver')]",
+    "mySqlDbName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqldb')]"
   },
   "resources": [
     {
@@ -305,7 +305,7 @@
           "location": "[resourceGroup().location]",
           "dependsOn": [
             "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
-            "[resourceId('Microsoft.Storage/storageAccounts', variables('webStorageAccountName'))]"
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('appStorageAccountName'))]"
           ],
           "properties": {
             "publisher": "Microsoft.Azure.Extensions",
@@ -319,7 +319,7 @@
               ]
             },
             "protectedSettings": {
-              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', variables('webStorageAccountName'), '\" -sk \"', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('webStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -rg \"', resourceGroup().name, '\" -w \"', variables('webAppName'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
+              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', variables('appStorageAccountName'), '\" -sk \"', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('appStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -rg \"', resourceGroup().name, '\" -w \"', variables('webAppName'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
             }
           }
         }
@@ -331,7 +331,7 @@
         "name": "Standard_RAGRS"
       },
       "kind": "Storage",
-      "name": "[variables('webStorageAccountName')]",
+      "name": "[variables('appStorageAccountName')]",
       "apiVersion": "2017-06-01",
       "location": "[resourceGroup().location]",
       "tags": {},
@@ -344,11 +344,11 @@
         "name": "B1"
       },
       "kind": "app",
-      "name": "[variables('webServicePlanName')]",
+      "name": "[variables('servicePlanName')]",
       "apiVersion": "2016-09-01",
       "location": "[resourceGroup().location]",
       "properties": {
-          "name": "[variables('webServicePlanName')]"
+          "name": "[variables('servicePlanName')]"
       },
       "dependsOn": []
     },
@@ -360,10 +360,10 @@
       "location": "[resourceGroup().location]",
       "tags": {},
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('webServicePlanName'))]"
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlanName'))]"
       },
       "dependsOn": [
-          "[resourceId('Microsoft.Web/serverfarms', variables('webServicePlanName'))]"
+          "[resourceId('Microsoft.Web/serverfarms', variables('servicePlanName'))]"
       ],
       "resources": [
         {
@@ -390,7 +390,7 @@
           ],
           "properties": {
              "defaultConnection": {
-                "value":"[concat('Database=', variables('webMySqlDbName'), ';Data Source=', variables('webMySqlServerName'), '.mysql.database.azure.com;User Id=', parameters('mySqlAdminLogin'),'@', variables('webMySqlServerName'),';Password=', parameters('mySqlAdminPassword'))]",
+                "value":"[concat('Database=', variables('mySqlDbName'), ';Data Source=', variables('mySqlServerName'), '.mysql.database.azure.com;User Id=', parameters('mySqlAdminLogin'),'@', variables('mySqlServerName'),';Password=', parameters('mySqlAdminPassword'))]",
                 "type":"MySql"
              }
           }
@@ -400,7 +400,7 @@
     {  
       "apiVersion":"2017-04-30-preview",
       "location":"[resourceGroup().location]",
-      "name":"[variables('webMySqlServerName')]",
+      "name":"[variables('mySqlServerName')]",
       "properties":{
          "version":"5.7",
          "administratorLogin":"[parameters('mySqlAdminLogin')]",
@@ -417,17 +417,17 @@
             "type":"firewallrules",
             "apiVersion":"2017-04-30-preview",
             "dependsOn":[  
-               "[resourceId('Microsoft.DBforMySQL/servers', variables('webMySqlServerName'))]"
+               "[resourceId('Microsoft.DBforMySQL/servers', variables('mySqlServerName'))]"
             ],
             "location":"[resourceGroup().location]",
-            "name":"[concat(variables('webMySqlServerName'),'Firewall')]",
+            "name":"[concat(variables('mySqlServerName'),'Firewall')]",
             "properties":{  
                "startIpAddress":"0.0.0.0",
                "endIpAddress":"255.255.255.255"
             }
          },
          {  
-            "name":"[variables('webMySqlDbName')]",
+            "name":"[variables('mySqlDbName')]",
             "type":"databases",
             "apiVersion":"2017-04-30-preview",
             "properties":{  
@@ -435,7 +435,7 @@
                "collation":"utf8_general_ci"
             },
             "dependsOn":[  
-               "[resourceId('Microsoft.DBforMySQL/servers', variables('webMySqlServerName'))]"
+               "[resourceId('Microsoft.DBforMySQL/servers', variables('mySqlServerName'))]"
             ]
          }
       ]
