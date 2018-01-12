@@ -144,6 +144,7 @@ for plugin in "${plugins[@]}"; do
   run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "install-plugin $plugin -deploy"
 done
 
+
 # open a fixed port for JNLP
 inter_jenkins_config=$(sed -zr -e"s|<slaveAgentPort.*</slaveAgentPort>|<slaveAgentPort>{slave-agent-port}</slaveAgentPort>|" /var/lib/jenkins/config.xml)
 final_jenkins_config=${inter_jenkins_config//'{slave-agent-port}'/${jenkins_agent_port}}
@@ -155,10 +156,10 @@ sudo service jenkins restart
 # wait for instance to be back online
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "version"
 
+
 # download credential dependencies
 credentials_sp_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-sp.xml${custom_artifacts_location_sas_token})
 credentials_storage_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-storage.xml${custom_artifacts_location_sas_token})
-configs_agent_aci_xml=$(curl -s ${custom_artifacts_location}/jenkins/configs-agent-aci.xml${custom_artifacts_location_sas_token})
 
 # prepare credentials_sp.xml (service principal)
 credentials_sp_xml=${credentials_sp_xml//'{insert-credentials-id}'/${credential_sp_id}}
@@ -180,6 +181,10 @@ echo "${credentials_storage_xml}" > credentials_storage.xml
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_sp.xml"
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_storage.xml"
 
+
+# download aci agent dependencies
+configs_agent_aci_xml=$(curl -s ${custom_artifacts_location}/jenkins/configs-agent-aci.xml${custom_artifacts_location_sas_token})
+
 # configure Azure Container Instance
 configs_agent_aci_xml=${configs_agent_aci_xml//'{insert-credentials-id}'/${credential_sp_id}}
 configs_agent_aci_xml=${configs_agent_aci_xml//'{insert-resourcegroup-name}'/${resourcegroup}}
@@ -192,6 +197,7 @@ echo "${final_jenkins_config}" | sudo tee /var/lib/jenkins/config.xml > /dev/nul
 
 # reload configuration
 run_util_script "jenkins/run-cli-command.sh" -c "reload-configuration"
+
 
 # download job dependencies
 job_xml=$(curl -s ${custom_artifacts_location}/jenkins/jobs-build-webapp.xml${custom_artifacts_location_sas_token})
@@ -207,6 +213,7 @@ job_xml=${job_xml//'{insert-webapp-name}'/${webapp}}
 # add job
 echo "${job_xml}" > job.xml
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-job ${job_short_name}" -cif "job.xml"
+
 
 # cleanup
 rm job.xml
