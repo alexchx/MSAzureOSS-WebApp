@@ -123,6 +123,7 @@ do
   esac
 done
 
+# ==================================== VALIDATION ====================================
 throw_if_empty jenkins_username $jenkins_username
 if [ "$jenkins_username" != "admin" ]; then
   throw_if_empty jenkins_password $jenkins_password
@@ -138,25 +139,27 @@ throw_if_empty --webapp $webapp
 throw_if_empty --repository $repository
 throw_if_empty --custom_artifacts_location $custom_artifacts_location
 
+# ==================================== PLUGIN ====================================
 # install the required plugins
 plugins=(credentials envinject)
 for plugin in "${plugins[@]}"; do
   run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "install-plugin $plugin -deploy"
 done
 
-
+# ==================================== JNLP ====================================
 # open a fixed port for JNLP
 inter_jenkins_config=$(sed -zr -e"s|<slaveAgentPort.*</slaveAgentPort>|<slaveAgentPort>{slave-agent-port}</slaveAgentPort>|" /var/lib/jenkins/config.xml)
 final_jenkins_config=${inter_jenkins_config//'{slave-agent-port}'/${jenkins_agent_port}}
 echo "${final_jenkins_config}" | sudo tee /var/lib/jenkins/config.xml > /dev/null
 
+# ==================================== RESTART JENKINS ====================================
 # restart jenkins
 sudo service jenkins restart
 
 # wait for instance to be back online
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "version"
 
-
+# ==================================== CREDENTIAL ====================================
 # download credential dependencies
 credentials_sp_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-sp.xml${custom_artifacts_location_sas_token})
 credentials_storage_xml=$(curl -s ${custom_artifacts_location}/jenkins/credentials-storage.xml${custom_artifacts_location_sas_token})
@@ -181,7 +184,7 @@ echo "${credentials_storage_xml}" > credentials_storage.xml
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_sp.xml"
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-credentials-by-xml system::system::jenkins _" -cif "credentials_storage.xml"
 
-
+# ==================================== ACI AGENT ====================================
 # download aci agent dependencies
 configs_agent_aci_xml=$(curl -s ${custom_artifacts_location}/jenkins/configs-agent-aci.xml${custom_artifacts_location_sas_token})
 
@@ -195,10 +198,10 @@ inter_jenkins_config=$(sed -zr -e"s|<clouds/>|{clouds}|" /var/lib/jenkins/config
 final_jenkins_config=${inter_jenkins_config//'{clouds}'/${configs_agent_aci_xml}}
 echo "${final_jenkins_config}" | sudo tee /var/lib/jenkins/config.xml > /dev/null
 
-# reload configuration
+# ==================================== RELOAD CONFIG ====================================
 run_util_script "jenkins/run-cli-command.sh" -c "reload-configuration"
 
-
+# ==================================== JOB ====================================
 # download job dependencies
 job_xml=$(curl -s ${custom_artifacts_location}/jenkins/jobs-build-webapp.xml${custom_artifacts_location_sas_token})
 
@@ -214,8 +217,7 @@ job_xml=${job_xml//'{insert-webapp-name}'/${webapp}}
 echo "${job_xml}" > job.xml
 run_util_script "jenkins/run-cli-command.sh" -j "$jenkins_url" -ju "$jenkins_username" -jp "$jenkins_password" -c "create-job ${job_short_name}" -cif "job.xml"
 
-
-# cleanup
+# ==================================== CLEANUP ====================================
 rm job.xml
 rm credentials_sp.xml
 rm credentials_storage.xml
