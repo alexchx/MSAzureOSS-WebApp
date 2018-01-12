@@ -382,7 +382,7 @@
               "[resourceId('Microsoft.Web/sites', variables('webAppName'))]"
           ]
         },
-        {  
+        {
           "apiVersion":"2016-08-01",
           "name":"connectionstrings",
           "type":"config",
@@ -407,7 +407,6 @@
       "tags": {
           "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('webAppName'))]": "Resource"
       },
-      "scale": null,
       "properties": {
           "ApplicationId": "[variables('appInsightsName')]"
       },
