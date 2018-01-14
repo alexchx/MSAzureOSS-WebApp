@@ -27,8 +27,8 @@ public class DbAccess {
             	Product p = new Product();
                 p.Id = rs.getInt(1);
                 p.Title = rs.getString(2);
-                p.Description = rs.getString(3);
-                p.Category = rs.getString(4);
+                p.Category = rs.getString(3);
+                p.Description = rs.getString(4);
                     
                 products.add(p);
             }
