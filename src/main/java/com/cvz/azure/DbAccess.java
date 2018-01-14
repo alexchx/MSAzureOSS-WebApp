@@ -131,6 +131,9 @@ public class DbAccess {
 	// Database=[host];Data Source=[server];User Id=[username];Password=[password]
 	private Map<String, String> getConnectionData() throws Exception {
 		String connStr = System.getenv("MYSQLCONNSTR_defaultConnection");
+		if (connStr == null) {
+			throw new Exception("Couldn't find the connection string.");
+		}
 		
 		String[] segments = connStr.split(";");
 		Map<String, String> dict = new HashMap<String, String>();
