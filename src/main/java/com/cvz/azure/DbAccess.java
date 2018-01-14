@@ -66,11 +66,15 @@ public class DbAccess {
 	        stmt.executeUpdate(sqlSchema);
 	        
 	        // initialize data
-	        String sqlData = "INSERT INTO products VALUES(1, 'Lorem ipsum dolor sit amet', 'Nullam', 'Donec id nulla molestie tortor gravida venenatis eu non leo. Suspendisse eget ante non arcu elementum dictum.');" +
-	        		"INSERT INTO products VALUES(2, 'Donec id nulla molestie tortor', 'Pellentesque', 'Suspendisse eget ante non arcu elementum dictum. Praesent sit amet est non tortor consequat imperdiet sed in risus.');" +
-	        		"INSERT INTO products VALUES(3, 'Fusce aliquam orci id vehicula malesuada', 'Phasellus', 'Mauris id nisl diam. Pellentesque ut leo massa. Vivamus et enim eu enim facilisis tempor. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae');";
+	        String sqlData = "INSERT INTO products VALUES(1, 'Lorem ipsum dolor sit amet', 'Nullam', 'Donec id nulla molestie tortor gravida venenatis eu non leo. Suspendisse eget ante non arcu elementum dictum.');";
 	        stmt.executeUpdate(sqlData);
-	        
+
+	        sqlData = "INSERT INTO products VALUES(2, 'Donec id nulla molestie tortor', 'Pellentesque', 'Suspendisse eget ante non arcu elementum dictum. Praesent sit amet est non tortor consequat imperdiet sed in risus.');";
+	        stmt.executeUpdate(sqlData);
+
+	        sqlData = "INSERT INTO products VALUES(3, 'Fusce aliquam orci id vehicula malesuada', 'Phasellus', 'Mauris id nisl diam. Pellentesque ut leo massa. Vivamus et enim eu enim facilisis tempor. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae');";
+	        stmt.executeUpdate(sqlData);
+
 	        stmt.close();
 		}
 		catch (SQLException e)
