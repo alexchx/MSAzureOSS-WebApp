@@ -2,6 +2,8 @@ package com.cvz.azure;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class DbAccess {
@@ -84,11 +86,13 @@ public class DbAccess {
 	}
 	
 	private Connection getConnection() throws Exception {
-		// Initialize connection variables. 
-        String host = "webosswamysqlserver.mysql.database.azure.com";
-        String database = "webosswamysqldb";
-        String user = "adminLogin@webosswamysqlserver";
-        String password = "Beat@Apple123";
+		Map<String, String> connData = getConnectionData();
+		
+		// Initialize connection variables
+        String host = connData.get("Data Source");
+        String database = connData.get("Database");
+        String user = connData.get("User Id");
+        String password = connData.get("Password");
         
         // check that the driver is installed
         try
@@ -103,7 +107,7 @@ public class DbAccess {
         // Initialize connection object
         try
         {
-            String url = String.format("jdbc:mysql://%s/%s", host, database);           
+            String url = String.format("jdbc:mysql://%s/%s", host, database);
            
             // Set connection properties.
             Properties properties = new Properties();
@@ -115,11 +119,27 @@ public class DbAccess {
             properties.setProperty("serverTimezone", "UTC");
 
             // get connection
-            return DriverManager.getConnection(url, properties);          
+            return DriverManager.getConnection(url, properties);
         }
         catch (SQLException e)
         {
             throw new SQLException("Failed to create connection to database.", e);
         }
+	}
+	
+	// Get the connection string settings from Azure Web App, following this format.
+	// Database=[host];Data Source=[server];User Id=[username];Password=[password]
+	private Map<String, String> getConnectionData() throws Exception {
+		String connStr = System.getenv("MYSQLCONNSTR_defaultConnection");
+		
+		String[] segments = connStr.split(";");
+		Map<String, String> dict = new HashMap<String, String>();
+		for (int i = 0; i < segments.length; i++) {
+			String[] pair = segments[i].split("=");
+			
+			dict.put(pair[0], pair[1]);
+		}
+		
+		return dict;
 	}
 }
