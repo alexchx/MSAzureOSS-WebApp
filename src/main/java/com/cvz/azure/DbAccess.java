@@ -5,8 +5,81 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 public class DbAccess {
+	
 	public ArrayList<Product> getProducts() throws Exception {
-		ArrayList<Product> products= new ArrayList<Product>();
+        Connection conn = getConnection();
+
+		initDbIfNeed(conn);
+		
+        // Perform some SQL queries over the connection.
+        try
+        {
+        	Statement stmt = conn.createStatement(); 
+            System.out.println("Successfully created connection to database.");
+
+            String sql = "SELECT * FROM products";
+            ResultSet rs = stmt.executeQuery(sql);
+
+    		ArrayList<Product> products= new ArrayList<Product>();
+            while (rs.next()) {
+            	Product p = new Product();
+                p.Id = rs.getInt(1);
+                p.Title = rs.getString(2);
+                p.Description = rs.getString(3);
+                p.Category = rs.getString(4);
+                    
+                products.add(p);
+            }
+
+            rs.close();
+            stmt.close();
+            conn.close();
+            
+            return products;
+        }
+        catch (SQLException e)
+        {
+            throw new SQLException("Encountered an error when executing given sql statement.", e);
+        }
+	}
+
+	public void initDbIfNeed(Connection conn) throws Exception {
+		// check table existence
+		ResultSet rs = conn.getMetaData().getTables(null, null, "products", null);
+		if (rs.next())  {
+			// skip as table already exists
+			return;
+		}
+		
+		try
+		{
+			Statement stmt = conn.createStatement();
+			
+			// create table
+	        String sqlSchema = "CREATE TABLE products (" + 
+	        		"  Id int(11) NOT NULL," + 
+	        		"  Title varchar(45) NOT NULL," + 
+	        		"  Category varchar(45) DEFAULT NULL," +
+	        		"  Description varchar(500) DEFAULT NULL," + 
+	        		"  PRIMARY KEY (Id)" + 
+	        		");";
+	        stmt.executeUpdate(sqlSchema);
+	        
+	        // initialize data
+	        String sqlData = "INSERT INTO products VALUES(1, 'Lorem ipsum dolor sit amet', 'Nullam', 'Donec id nulla molestie tortor gravida venenatis eu non leo. Suspendisse eget ante non arcu elementum dictum.');" +
+	        		"INSERT INTO products VALUES(2, 'Donec id nulla molestie tortor', 'Pellentesque', 'Suspendisse eget ante non arcu elementum dictum. Praesent sit amet est non tortor consequat imperdiet sed in risus.');" +
+	        		"INSERT INTO products VALUES(3, 'Fusce aliquam orci id vehicula malesuada', 'Phasellus', 'Mauris id nisl diam. Pellentesque ut leo massa. Vivamus et enim eu enim facilisis tempor. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae');";
+	        stmt.executeUpdate(sqlData);
+	        
+	        stmt.close();
+		}
+		catch (SQLException e)
+		{
+			throw new SQLException("Encountered an error when initialize the database.", e);
+		}
+	}
+	
+	private Connection getConnection() throws Exception {
 		// Initialize connection variables. 
         String host = "webosswamysqlserver.mysql.database.azure.com";
         String database = "webosswamysqldb";
@@ -23,10 +96,6 @@ public class DbAccess {
             throw new ClassNotFoundException("MySQL JDBC driver NOT detected in library path.", e);
         }
 
-        System.out.println("MySQL JDBC driver detected in library path.");
-
-        Connection connection = null;
-
         // Initialize connection object
         try
         {
@@ -42,49 +111,11 @@ public class DbAccess {
             properties.setProperty("serverTimezone", "UTC");
 
             // get connection
-            connection = DriverManager.getConnection(url, properties);          
+            return DriverManager.getConnection(url, properties);          
         }
         catch (SQLException e)
         {
             throw new SQLException("Failed to create connection to database.", e);
         }
-        if (connection != null) 
-        { 
-            System.out.println("Successfully created connection to database.");
-
-            // Perform some SQL queries over the connection.
-            try
-            {
-            	Statement stmt = connection.createStatement(); 
-                System.out.println("Successfully created connection to database.");
-
-                String sql = "select * from products";    
-                ResultSet rs = stmt.executeQuery(sql);                  
-                    while (rs.next()){                      
-                     
-                        Product p = new Product();
-                        p.Id = rs.getInt(1);
-                        p.Title = rs.getString(2);
-                        p.Description = rs.getString(3);
-                        p.Category = rs.getString(4);
-                        
-                        products.add(p);
-                    }
-                    
-                    rs.close();
-                    stmt.close();
-                    connection.close();
-            }
-            catch (SQLException e)
-            {
-                throw new SQLException("Encountered an error when executing given sql statement.", e);
-            }       
-        }
-        else {
-            System.out.println("Failed to create connection to database.");
-        }
-        System.out.println("Execution finished.");
-        
-        return products;
 	}
 }
