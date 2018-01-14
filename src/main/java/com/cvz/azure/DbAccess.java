@@ -17,7 +17,6 @@ public class DbAccess {
         try
         {
         	Statement stmt = conn.createStatement(); 
-            System.out.println("Successfully created connection to database.");
 
             String sql = "SELECT * FROM products";
             ResultSet rs = stmt.executeQuery(sql);
