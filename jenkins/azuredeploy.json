@@ -289,7 +289,7 @@
               ]
             },
             "protectedSettings": {
-              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -jpi \"', variables('vmPrivateIP'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', parameters('storageAccountName'), '\" -sk \"', parameters('storageAccountKey'), '\" -rg \"', resourceGroup().name, '\" -w \"', parameters('webAppName'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\"')]"
+              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -jrt \"', parameters('jenkinsReleaseType'), '\" -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', parameters('storageAccountName'), '\" -sk \"', parameters('storageAccountKey'), '\" -rg \"', resourceGroup().name, '\" -w \"', parameters('webAppName'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\"')]"
             }
           }
         }
