@@ -4,27 +4,18 @@
   "parameters": {
     "adminUsername": {
       "type": "string",
-      "defaultValue": "jenkinsadmin",
-      "minLength": 1,
-      "maxLength": 16,
       "metadata": {
         "description": "User name for the Jenkins Virtual Machine."
       }
     },
     "adminPassword": {
       "type": "securestring",
-      "defaultValue": "",
-      "minLength": 6,
-      "maxLength": 16,
       "metadata": {
         "description": "Password for the Jenkins Virtual Machine."
       }
     },
     "dnsPrefix": {
       "type": "string",
-      "defaultValue": "jenkins-oss-00",
-      "minLength": 3,
-      "maxLength": 16,
       "metadata": {
         "description": "Unique DNS Name for the Public IP used to access the Jenkins Virtual Machine."
       }
@@ -43,45 +34,36 @@
     },
     "repositoryUrl": {
       "type": "string",
-      "defaultValue": "https://github.com/alexchx/MSAzureOSS-WebApp",
-      "minLength": 1,
       "metadata": {
         "description": "GitHub repository URL, e.g. https://github.com/xxx/yyy."
       }
     },
     "clientId": {
       "type": "string",
-      "defaultValue": "55e66ab1-e79a-449d-a171-ab94214b3c07",
-      "minLength": 1,
       "metadata": {
         "description": "Client id for Azure service principal."
       }
     },
     "clientSecret": {
       "type": "string",
-      "defaultValue": "60a4f891-cb93-4593-8a07-cf1d2693b70d",
-      "minLength": 1,
       "metadata": {
         "description": "Client secret for Azure service principal."
       }
     },
     "storageAccountName": {
       "type": "string",
-      "minLength": 1,
       "metadata": {
         "description": "Storage account name."
       }
     },
     "storageAccountKey": {
       "type": "string",
-      "minLength": 1,
       "metadata": {
         "description": "Storage account key."
       }
     },
     "webAppName": {
       "type": "string",
-      "minLength": 1,
       "metadata": {
         "description": "Prefix name for web app components, accepts numbers and letters only."
       }
