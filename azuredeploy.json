@@ -2,7 +2,7 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "adminUsername": {
+    "jenkinsVMAdminUsername": {
       "type": "string",
       "defaultValue": "jenkinsadmin",
       "minLength": 1,
@@ -11,7 +11,7 @@
         "description": "User name for the Jenkins Virtual Machine."
       }
     },
-    "adminPassword": {
+    "jenkinsVMAdminPassword": {
       "type": "securestring",
       "defaultValue": "",
       "minLength": 6,
@@ -94,245 +94,22 @@
     }
   },
   "variables": {
-    "resourcePrefix": "Jenkins",
-    "storageAccountName": "[concat(toLower(variables('resourcePrefix')), uniquestring(resourceGroup().id))]",
-    "OSDiskName": "[concat(variables('resourcePrefix'), 'OSDisk')]",
-    "nicName": "[concat(variables('resourcePrefix'), 'VMNic')]",
-    "subnetName": "[concat(variables('resourcePrefix'), 'Subnet')]",
-    "publicIPAddressName": "[concat(variables('resourcePrefix'), 'PublicIP')]",
-    "vmStorageAccountContainerName": "vhds",
-    "vmName": "[concat(variables('resourcePrefix'), 'VM')]",
-    "vmExtensionName": "[concat(variables('resourcePrefix'), 'Init')]",
-    "virtualNetworkName": "[concat(variables('resourcePrefix'), 'VNET')]",
-    "frontEndNSGName": "[concat(variables('resourcePrefix'), 'NSG')]",
-    "vNetAddressPrefixes": "10.0.0.0/16",
-    "sNetAddressPrefixes": "10.0.0.0/24",
-    "vmPrivateIP": "10.0.0.5",
-    "agentPort": "5378",
-    "_artifactsLocation": "https://raw.githubusercontent.com/Azure/azure-devops-utils/v0.28.1/",
-    "_extensionScript": "install_jenkins.sh",
-    "_artifactsLocationSasToken": "",
-    "_customArtifactsLocation": "[concat(replace(parameters('repositoryUrl'), 'https://github.com/', 'https://raw.githubusercontent.com/'), '/master/')]",
-    "_customExtensionScript": "shell-add-jobs-build-webapp.sh",
-    "_customArtifactsLocationSasToken": "",
-    "appStorageAccountName": "[concat(toLower(parameters('appDnsPrefix')), 'storage')]",
+    "storageAccountName": "[concat(toLower(parameters('appDnsPrefix')), 'storage')]",
     "servicePlanName": "[concat(parameters('appDnsPrefix'), 'ServicePlan')]",
     "webAppName": "[concat(parameters('appDnsPrefix'), 'Web')]",
     "appInsightsName": "[concat(parameters('appDnsPrefix'), 'AppInsights')]",
     "mySqlServerName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqlserver')]",
-    "mySqlDbName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqldb')]"
+    "mySqlDbName": "[concat(toLower(parameters('appDnsPrefix')), 'mysqldb')]",
+    "_artifactsLocation": "[concat(replace(parameters('repositoryUrl'), 'https://github.com/', 'https://raw.githubusercontent.com/'), '/master/')]"
   },
   "resources": [
-    {
-      "type": "Microsoft.Storage/storageAccounts",
-      "name": "[variables('storageAccountName')]",
-      "apiVersion": "2016-01-01",
-      "location": "[resourceGroup().location]",
-      "sku": {
-        "name": "Standard_LRS"
-      },
-      "kind": "Storage",
-      "properties": {}
-    },
-    {
-      "apiVersion": "2016-09-01",
-      "type": "Microsoft.Network/publicIPAddresses",
-      "name": "[variables('publicIPAddressName')]",
-      "location": "[resourceGroup().location]",
-      "properties": {
-        "publicIPAllocationMethod": "Dynamic",
-        "dnsSettings": {
-          "domainNameLabel": "[parameters('jenkinsDnsPrefix')]"
-        }
-      }
-    },
-    {
-      "apiVersion": "2015-06-15",
-      "type": "Microsoft.Network/networkSecurityGroups",
-      "name": "[variables('frontEndNSGName')]",
-      "location": "[resourceGroup().location]",
-      "tags": {
-        "displayName": "NSG - Front End"
-      },
-      "properties": {
-        "securityRules": [
-          {
-            "name": "ssh-rule",
-            "properties": {
-              "description": "Allow SSH",
-              "protocol": "Tcp",
-              "sourcePortRange": "*",
-              "destinationPortRange": "22",
-              "sourceAddressPrefix": "Internet",
-              "destinationAddressPrefix": "*",
-              "access": "Allow",
-              "priority": 100,
-              "direction": "Inbound"
-            }
-          },
-          {
-            "name": "http-rule",
-            "properties": {
-              "description": "Allow HTTP",
-              "protocol": "Tcp",
-              "sourcePortRange": "*",
-              "destinationPortRange": "80",
-              "sourceAddressPrefix": "Internet",
-              "destinationAddressPrefix": "*",
-              "access": "Allow",
-              "priority": 101,
-              "direction": "Inbound"
-            }
-          },
-          {
-              "name": "AllowAgentInBound",
-              "properties": {
-                  "protocol": "*",
-                  "sourcePortRange": "*",
-                  "destinationPortRange": "[variables('agentPort')]",
-                  "sourceAddressPrefix": "*",
-                  "destinationAddressPrefix": "*",
-                  "access": "Allow",
-                  "priority": 200,
-                  "direction": "Inbound",
-                  "sourceAddressPrefixes": [],
-                  "destinationAddressPrefixes": []
-              }
-          }
-        ]
-      }
-    },
-    {
-      "apiVersion": "2016-09-01",
-      "type": "Microsoft.Network/virtualNetworks",
-      "name": "[variables('virtualNetworkName')]",
-      "location": "[resourceGroup().location]",
-      "properties": {
-        "addressSpace": {
-          "addressPrefixes": [
-            "[variables('vNetAddressPrefixes')]"
-          ]
-        },
-        "subnets": [
-          {
-            "name": "[variables('subnetName')]",
-            "properties": {
-              "addressPrefix": "[variables('sNetAddressPrefixes')]",
-              "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('frontEndNSGName'))]"
-              }
-            }
-          }
-        ]
-      },
-      "dependsOn": [
-        "[concat('Microsoft.Network/networkSecurityGroups/', variables('frontEndNSGName'))]"
-      ]
-    },
-    {
-      "apiVersion": "2016-09-01",
-      "type": "Microsoft.Network/networkInterfaces",
-      "name": "[variables('nicName')]",
-      "location": "[resourceGroup().location]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
-      ],
-      "properties": {
-        "ipConfigurations": [
-          {
-            "name": "ipconfig1",
-            "properties": {
-              "privateIPAllocationMethod": "Static",
-              "privateIpAddress": "[variables('vmPrivateIP')]",
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
-              },
-              "subnet": {
-                "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')),'/subnets/',variables('subnetName'))]"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "apiVersion": "2016-03-30",
-      "type": "Microsoft.Compute/virtualMachines",
-      "name": "[variables('vmName')]",
-      "location": "[resourceGroup().location]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-        "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
-      ],
-      "properties": {
-        "hardwareProfile": {
-          "vmSize": "Standard_D2_v2"
-        },
-        "osProfile": {
-          "computerName": "[variables('vmName')]",
-          "adminUsername": "[parameters('adminUsername')]",
-          "adminPassword": "[parameters('adminPassword')]"
-        },
-        "storageProfile": {
-          "imageReference": {
-            "publisher": "Canonical",
-            "offer": "UbuntuServer",
-            "sku": "16.04-LTS",
-            "version": "latest"
-          },
-          "osDisk": {
-            "name": "osdisk",
-            "vhd": {
-              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2016-01-01').primaryEndpoints.blob, variables('vmStorageAccountContainerName'), '/', variables('OSDiskName'), '.vhd')]"
-            },
-            "caching": "ReadWrite",
-            "createOption": "FromImage"
-          }
-        },
-        "networkProfile": {
-          "networkInterfaces": [
-            {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
-            }
-          ]
-        }
-      },
-      "resources": [
-        {
-          "type": "extensions",
-          "name": "[variables('vmExtensionName')]",
-          "apiVersion": "2015-06-15",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
-            "[resourceId('Microsoft.Storage/storageAccounts', variables('appStorageAccountName'))]"
-          ],
-          "properties": {
-            "publisher": "Microsoft.Azure.Extensions",
-            "type": "CustomScript",
-            "typeHandlerVersion": "2.0",
-            "autoUpgradeMinorVersion": true,
-            "settings": {
-              "fileUris": [
-                "[concat(variables('_artifactsLocation'), '/jenkins/', variables('_extensionScript'), variables('_artifactsLocationSasToken'))]",
-                "[concat(variables('_customArtifactsLocation'), '/jenkins/', variables('_customExtensionScript'))]"
-              ]
-            },
-            "protectedSettings": {
-              "commandToExecute": "[concat('./' , variables('_extensionScript'), ' -jf \"', reference(variables('publicIPAddressName')).dnsSettings.fqdn, '\" -pi \"\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -jrt \"', parameters('jenkinsReleaseType'), '\" && ./' , variables('_customExtensionScript'), ' -su \"', subscription().subscriptionId, '\" -t \"', subscription().tenantId, '\" -i \"', parameters('clientId'), '\" -s \"', parameters('clientSecret'), '\" -sn \"', variables('appStorageAccountName'), '\" -sk \"', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('appStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -rg \"', resourceGroup().name, '\" -w \"', variables('webAppName'), '\" -rr \"', parameters('repositoryUrl'), '\" -al \"', variables('_artifactsLocation'), '\" -st \"', variables('_artifactsLocationSasToken'), '\" -cal \"', variables('_customArtifactsLocation'), '\" -cst \"', variables('_customArtifactsLocationSasToken'), '\"')]"
-            }
-          }
-        }
-      ]
-    },
     {
       "type": "Microsoft.Storage/storageAccounts",
       "sku": {
         "name": "Standard_RAGRS"
       },
       "kind": "Storage",
-      "name": "[variables('appStorageAccountName')]",
+      "name": "[variables('storageAccountName')]",
       "apiVersion": "2017-06-01",
       "location": "[resourceGroup().location]",
       "tags": {},
@@ -454,16 +231,63 @@
             ]
          }
       ]
+    },
+    {
+      "apiVersion": "2017-05-10",
+      "name": "jenkinsDeployment",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(variables('_artifactsLocation'), 'jenkins/azuredeploy.json')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "adminUsername": {
+            "value": "[parameters('jenkinsVMAdminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('jenkinsVMAdminPassword')]"
+          },
+          "dnsPrefix": {
+            "value": "[parameters('jenkinsDnsPrefix')]"
+          },
+          "jenkinsReleaseType": {
+            "value": "[parameters('jenkinsReleaseType')]"
+          },
+          "repositoryUrl": {
+            "value": "[parameters('repositoryUrl')]"
+          },
+          "clientId": {
+            "value": "[parameters('clientId')]"
+          },
+          "clientSecret": {
+            "value": "[parameters('clientSecret')]"
+          },
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "storageAccountKey": {
+            "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value]"
+          },
+          "webAppName": {
+            "value": "[variables('webAppName')]"
+          }
+        }
+      },
+      "dependsOn": [          
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ]
     }
   ],
   "outputs": {
     "jenkinsURL": {
       "type": "string",
-      "value": "[concat('http://', reference(variables('publicIPAddressName')).dnsSettings.fqdn)]"
+      "value": "[reference('jenkinsDeployment').outputs.jenkinsURL.value]"
     },
-    "SSH": {
+    "jenkinsSSH": {
       "type": "string",
-      "value": "[concat('ssh -L 8080:localhost:8080 ', parameters('adminUsername'), '@', reference(variables('publicIPAddressName')).dnsSettings.fqdn)]"
+      "value": "[reference('jenkinsDeployment').outputs.jenkinsSSH.value]"
     },
     "webAppURL": {
       "type": "string",
